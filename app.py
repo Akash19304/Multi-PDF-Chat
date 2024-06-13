@@ -16,6 +16,15 @@ os.environ['GROQ_API_KEY']=os.getenv('GROQ_API_KEY')
 
 
 def get_pdf_text(pdf_docs):
+    """
+    Retrieves text from a list of PDF documents.
+
+    Args:
+        pdf_docs (list): List of PDF documents to extract text from.
+
+    Returns:
+        str: Text extracted from the PDF documents.
+    """
     text = ""
     for pdf in pdf_docs:
         pdf_reader = PdfReader(pdf)
@@ -25,6 +34,16 @@ def get_pdf_text(pdf_docs):
 
 
 def get_text_chunks(text):
+    """
+    Splits the given text into chunks of a specified size, with a specified overlap.
+    
+    Args:
+        text (str): The text to be split into chunks.
+        
+    Returns:
+        List[str]: A list of text chunks, each of which is a substring of the input text.
+    """
+
     text_splitter = CharacterTextSplitter(
         separator="\n",
         chunk_size=1000,
@@ -36,7 +55,17 @@ def get_text_chunks(text):
 
 
 def get_vectorstore(text_chunks):
-    # embeddings = OpenAIEmbeddings()
+    """
+    Generate a vector store from a list of text chunks.
+
+    Args:
+        text_chunks (List[str]): A list of text chunks.
+
+    Returns:
+        vectorstore (FAISS): A vector store created from the text chunks using the HuggingFaceEmbeddings model.
+
+    """
+
     embeddings = HuggingFaceEmbeddings(
         model_name="thenlper/gte-small",
         multi_process=True,
@@ -48,14 +77,20 @@ def get_vectorstore(text_chunks):
 
 
 def get_conversation_chain(vectorstore):
-    # llm = ChatOpenAI()
-    # llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature":0.5, "max_length":512})
+    """
+    Generates a conversational retrieval chain from the provided vector store.
+
+    Args:
+        vectorstore (FAISS): A vector store used for retrieval.
+
+    Returns:
+        conversation_chain (ConversationalRetrievalChain): A conversational retrieval chain created from the provided vector store, language model, and memory.
+    """
 
     llm = ChatGroq(
-    temperature=0,
-    model="llama3-70b-8192",
-    # api_key="" # Optional if not set as an environment variable
-)
+        temperature=0,
+        model="llama3-70b-8192",
+    )
 
     memory = ConversationBufferMemory(
         memory_key='chat_history', return_messages=True)
@@ -69,6 +104,16 @@ def get_conversation_chain(vectorstore):
 
 
 def handle_userinput(user_question):
+    """
+    Handles user input by initiating a conversation based on the user's question, updating the chat history in the session state, and displaying messages alternatively from user and bot templates.
+
+    Args:
+        user_question (str): The question entered by the user.
+
+    Returns:
+        None
+    """
+
     response = st.session_state.conversation({'question': user_question})
     st.session_state.chat_history = response['chat_history']
 
@@ -82,6 +127,24 @@ def handle_userinput(user_question):
 
 
 def main():
+    """
+    Renders the main page of the application and handles user input for chat with multiple PDFs.
+
+    This function sets the page configuration for the application and writes the CSS code to the page.
+    It initializes the session state variables for the conversation and chat history if they are not already present.
+    It displays the header "Chat with multiple PDFs :books:" and prompts the user to enter a question about their documents.
+    If a user question is provided, the function calls the `handle_userinput` function to handle the user input.
+    The function also renders a sidebar with a subheader "Your documents" and a file uploader for uploading PDF documents.
+    If the "Process" button is clicked, the function processes the uploaded PDF documents by extracting text, splitting the text into chunks, creating a vector store, and creating a conversation chain.
+    The conversation chain is stored in the session state variable `conversation`.
+
+    Parameters:
+    None
+
+    Returns:
+    None
+    """
+
     st.set_page_config(page_title="Chat with multiple PDFs",
                        page_icon=":books:")
     st.write(css, unsafe_allow_html=True)
