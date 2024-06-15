@@ -9,10 +9,12 @@ from langchain.chains import ConversationalRetrievalChain
 from htmlTemplates import css, bot_template, user_template
 import os
 from langchain_groq import ChatGroq
+from gtts import gTTS
+import tempfile
 
 load_dotenv()
-os.environ['HUGGINGFACEHUB_API_TOKEN']=os.getenv('HUGGINGFACEHUB_API_TOKEN')
-os.environ['GROQ_API_KEY']=os.getenv('GROQ_API_KEY')
+os.environ['HUGGINGFACEHUB_API_TOKEN'] = os.getenv('HUGGINGFACEHUB_API_TOKEN')
+os.environ['GROQ_API_KEY'] = os.getenv('GROQ_API_KEY')
 
 
 def get_pdf_text(pdf_docs):
@@ -36,10 +38,10 @@ def get_pdf_text(pdf_docs):
 def get_text_chunks(text):
     """
     Splits the given text into chunks of a specified size, with a specified overlap.
-    
+
     Args:
         text (str): The text to be split into chunks.
-        
+
     Returns:
         List[str]: A list of text chunks, each of which is a substring of the input text.
     """
@@ -63,7 +65,6 @@ def get_vectorstore(text_chunks):
 
     Returns:
         vectorstore (FAISS): A vector store created from the text chunks using the HuggingFaceEmbeddings model.
-
     """
 
     embeddings = HuggingFaceEmbeddings(
@@ -94,13 +95,29 @@ def get_conversation_chain(vectorstore):
 
     memory = ConversationBufferMemory(
         memory_key='chat_history', return_messages=True)
-    
+
     conversation_chain = ConversationalRetrievalChain.from_llm(
         llm=llm,
         retriever=vectorstore.as_retriever(),
         memory=memory
     )
     return conversation_chain
+
+
+def generate_audio(text):
+    """
+    Generates an audio file from the provided text using gTTS.
+
+    Args:
+        text (str): The text to be converted to speech.
+
+    Returns:
+        str: Path to the generated audio file.
+    """
+    tts = gTTS(text)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
+        tts.save(fp.name)
+        return fp.name
 
 
 def handle_userinput(user_question):
@@ -124,6 +141,8 @@ def handle_userinput(user_question):
         else:
             st.write(bot_template.replace(
                 "{{MSG}}", message.content), unsafe_allow_html=True)
+            audio_file = generate_audio(message.content)
+            st.audio(audio_file)
 
 
 def main():
